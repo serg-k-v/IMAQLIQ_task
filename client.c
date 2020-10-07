@@ -9,6 +9,34 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
+const char* get_data_for_send() {
+    FILE* fp;
+    char c;
+    int cur_size = 0;
+    int size = 255;
+    int new_size = size;
+    char *buffer = malloc(size*sizeof(char));
+
+    fp = fopen("send_data.txt", "r");
+    
+    if (fp == NULL)
+        perror("File wasn't open");
+
+    while (fscanf(fp, "%c", &c) != EOF){
+        if (cur_size == size){
+            new_size +=size;
+            buffer = (char*)realloc(buffer, new_size*sizeof(char));
+            if(buffer == NULL){
+                free(buffer);
+                perror("Error (re)allocating memory");
+            }
+        }
+        buffer[cur_size++] = c;
+    }
+    fclose(fp);
+    return buffer;
+}
+
 int main(int argc, char *argv[]) {
     int sockfd = 0, n = 0;
     char recvBuff[1024];
@@ -46,7 +74,7 @@ int main(int argc, char *argv[]) {
        return 1;
     }
 
-    while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
+    while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)  // same recv
     {
         recvBuff[n] = 0;
         if(fputs(recvBuff, stdout) == EOF)
