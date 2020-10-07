@@ -1,6 +1,9 @@
 # IMAQLIQ_task
 Simple client-server app
 
+## Dependencies
+* cmake
+
 Клиент-серверное приложение под Linux.
 Клиент - программа, запускаемая из консоли.
 Сервер - демон, корректно завершающийся по сигналам SIGTERM и SIGHUP.
