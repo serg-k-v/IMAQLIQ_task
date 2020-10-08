@@ -1,5 +1,5 @@
 #include <sys/socket.h>
-#include <sys/types.h>
+// #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
+#define PORT 5006
+
 const char* get_data_for_send() {
     FILE* fp;
     char c;
@@ -17,7 +19,7 @@ const char* get_data_for_send() {
     int new_size = size;
     char *buffer = malloc(size*sizeof(char));
 
-    fp = fopen("send_data.txt", "r");
+    fp = fopen("../send_data.txt", "r");
     
     if (fp == NULL)
         perror("File wasn't open");
@@ -39,7 +41,6 @@ const char* get_data_for_send() {
 
 int main(int argc, char *argv[]) {
     int sockfd = 0, n = 0;
-    char recvBuff[1024];
     struct sockaddr_in serv_addr;
 
     if(argc != 2) {
@@ -47,7 +48,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    memset(recvBuff, '0',sizeof(recvBuff));
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         printf("\n Error : Could not create socket \n");
@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(23);
-    // serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
+    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
 
     if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
     {
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), port);
+    printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), PORT);
 
     if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
@@ -74,19 +74,11 @@ int main(int argc, char *argv[]) {
        return 1;
     }
 
-    while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)  // same recv
-    {
-        recvBuff[n] = 0;
-        if(fputs(recvBuff, stdout) == EOF)
-        {
-            printf("\n Error : Fputs error\n");
-        }
-    }
-
-    if(n < 0)
-    {
-        printf("\n Read error \n");
-    }
+    const char* buff = get_data_for_send();
+    if (send(sockfd, buff, strlen(buff), 0) != strlen(buff))
+        perror("Sent a different number of bytes than expected");
+    else
+        printf("Data was sent\n");
 
     return 0;
 }

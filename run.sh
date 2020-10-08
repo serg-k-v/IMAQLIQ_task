@@ -17,6 +17,7 @@ if [ ! -f $CAMKE ]; then
 else
 	cmake .. -DCMAKE_C_COMPILER=gcc
 	make -j 5
-	Server
-	Client
+	pwd
+	# ./Server -p 23 -i 192.168.10.1 -f client_data.txt
+	# ./Client -i 
 fi
