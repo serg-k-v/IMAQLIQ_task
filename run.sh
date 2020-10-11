@@ -6,7 +6,7 @@ CMAKE=/usr/local/bin/cmake
 
 if [ ! -d $BUILD ]; then
 	mkdir $BUILD
-	cd $BUILD	
+	cd $BUILD
 else
 	cd $BUILD
 fi
@@ -17,7 +17,11 @@ if [ ! -f $CAMKE ]; then
 else
 	cmake .. -DCMAKE_C_COMPILER=gcc
 	make -j 5
-	pwd
-	# ./Server -p 23 -i 192.168.10.1 -f client_data.txt
-	# ./Client -i 
+
+	./Server -p 5006 -f ../client_data.txt &
+	server_pid=$!
+	./Client  0.0.0.0 5006
+	client_pid=$! 
+	sleep 2s
+	kill -15 $server_pid
 fi

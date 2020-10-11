@@ -1,7 +1,6 @@
 #include <sys/socket.h>
-// #include <netinet/in.h>
-// #include <netdb.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -9,10 +8,8 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define PORT 5000
 #define MAX_PENDING 5
 #define BUFF_SIZE 1024
-#define SAVE_DATA_TO "client_data.txt"
 
 struct cmd_option {
     unsigned  int is_local;
@@ -36,20 +33,17 @@ int get_cmd_option(int argc, char* const argv[])
             {"file",   required_argument, 0, 'f'},
             {0, 0, 0, 0}
         };
-        /* getopt_long stores the option index here. */
+    
         int option_index = 0;
-
         c = getopt_long (argc, argv, "li:p:f:",
                         long_options, &option_index);
 
-        /* Detect the end of the options. */
         if (c == -1)
             break;
 
         switch (c)
         {
         case 0:
-            /* If this option set a flag, do nothing else now. */
             if (long_options[option_index].flag != 0)
                 break;
             printf ("option %s", long_options[option_index].name);
@@ -63,8 +57,8 @@ int get_cmd_option(int argc, char* const argv[])
             break;
         case 'i':
             printf ("option -i with value `%s'\n", optarg);
-            cmd_opt.addr = malloc(sizeof(optarg)*sizeof(char));
-            strncpy(cmd_opt.addr, optarg, sizeof(optarg));
+            cmd_opt.addr = malloc(strlen(optarg));
+            strncpy(cmd_opt.addr, optarg, strlen(optarg));
             break;
         case 'p':
             printf ("option -p with value `%s'\n", optarg);
@@ -72,11 +66,10 @@ int get_cmd_option(int argc, char* const argv[])
             break;
         case 'f':
             printf ("option -f with value `%s'\n", optarg);
-            cmd_opt.file = malloc(sizeof(optarg)*sizeof(char));
-            strncpy(cmd_opt.file, optarg, sizeof(optarg));
+            cmd_opt.file = malloc(strlen(optarg));
+            strncpy(cmd_opt.file, optarg, strlen(optarg));
             break;
         case '?':
-            /* getopt_long already printed an error message. */
             break;
 
         default:
@@ -84,7 +77,6 @@ int get_cmd_option(int argc, char* const argv[])
         }
     }
 
-    /* Print any remaining command line arguments (not options). */
     if (optind < argc)
     {
         printf ("non-option ARGV-elements: ");
@@ -96,22 +88,38 @@ int get_cmd_option(int argc, char* const argv[])
     }
 }
 
-void save_data_to_file(const char* buffer, unsigned int len, const char* file_name)
+
+
+void save_data_to_file(const char* buffer, unsigned int len,
+                       const char* file_name)
 {
     FILE* fp;
-
     fp = fopen(file_name, "a");
     
     if (fp == NULL)
         perror("File wasn't open");
 
-    // printf("len buff: %ld == %d", fprintf(fp, "%s", buffer), len);
-    // printf("Buff: %s", buffer);
-
     if (fprintf(fp, "%s", buffer) != len)
         perror("Saving failed");
-
+    
     fclose(fp);
+}
+
+void signal_handler(int signal, siginfo_t *info, void *ptr)
+{
+    printf("Received signal %d\n", signal);
+    exit(0);
+}
+
+void catch_signal(const int signum)
+{
+    static struct sigaction _sigact;
+
+    memset(&_sigact, 0, sizeof(_sigact));
+    _sigact.sa_sigaction = signal_handler;
+    _sigact.sa_flags = SA_SIGINFO;
+
+    sigaction(signum, &_sigact, NULL);
 }
 
 int main(int argc, char* const argv[])
@@ -124,19 +132,14 @@ int main(int argc, char* const argv[])
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
         perror("Error opening socket");
-
-    // memset(&serv_addr, '0', sizeof(serv_addr));
-    // memset(sendBuff, '0', sizeof(sendBuff));
     
     get_cmd_option(argc, argv);
-
-    printf("is local : %d, addr : %s, port %s\n", cmd_opt.is_local, cmd_opt.addr, cmd_opt.port);
-    printf("file name: %s\n", cmd_opt.file);
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(atoi(cmd_opt.port));
 
+    printf("PID is %ld\n", (long)getpid());
     printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), atoi(cmd_opt.port));
 
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
@@ -145,19 +148,18 @@ int main(int argc, char* const argv[])
     if (listen(sockfd, MAX_PENDING) < 0)
         perror("Error listening");
 
+    
+    catch_signal(SIGTERM);
+    catch_signal(SIGHUP);
+
     while (1) {
         addr_len = sizeof(serv_addr);
         connfd = accept(sockfd, (struct sockaddr*)&serv_addr, &addr_len);
         if (connfd < 0)
-            perror("Error accept");
-
-        if(fputs(recvBuff, stdout) == EOF)
-            printf("\n Error : Fputs error\n");
+            perror("\nError accept");
 
         if ((n = recv(connfd, recvBuff, BUFF_SIZE, 0)) < 0)
-            perror("recv failed!");
-        else
-            printf("Buff size: %d", n);
+            perror("\nRecive failed!");
 
         save_data_to_file(recvBuff, n, cmd_opt.file);
 
