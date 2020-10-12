@@ -10,6 +10,8 @@
 
 #define MAX_PENDING 5
 #define BUFF_SIZE 1024
+#define DEFAULT_PORT 5000
+#define DEFAULT_FILE_NAME "cl_data.txt"
 
 struct cmd_option {
     unsigned  int is_local;
@@ -22,6 +24,8 @@ int get_cmd_option(int argc, char* const argv[])
 {
     int c;
     cmd_opt.is_local = 0;
+    cmd_opt.port = NULL;
+    cmd_opt.file = NULL;
 
     while (1)
     {
@@ -88,8 +92,6 @@ int get_cmd_option(int argc, char* const argv[])
     }
 }
 
-
-
 void save_data_to_file(const char* buffer, unsigned int len,
                        const char* file_name)
 {
@@ -137,10 +139,25 @@ int main(int argc, char* const argv[])
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(atoi(cmd_opt.port));
+
+    if (cmd_opt.port == NULL)
+    {
+        printf("Port not specified, using defaul port %d\n", DEFAULT_PORT);
+        serv_addr.sin_port = htons(DEFAULT_PORT);
+    }
+    else
+        serv_addr.sin_port = htons(atoi(cmd_opt.port));
+
+    if (cmd_opt.file == NULL)
+    {
+        printf("File name not specified, using default file name : %s\n",
+               DEFAULT_FILE_NAME);
+        cmd_opt.file = malloc(strlen(DEFAULT_FILE_NAME));
+        strncpy(cmd_opt.file, DEFAULT_FILE_NAME, strlen(DEFAULT_FILE_NAME));
+    }
 
     printf("PID is %ld\n", (long)getpid());
-    printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), atoi(cmd_opt.port));
+    printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), ntohs(serv_addr.sin_port));
 
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
         perror("Bind failed");
