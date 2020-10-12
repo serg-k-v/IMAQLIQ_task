@@ -13,9 +13,8 @@ or
 
 ```bash
 chmod +x ./run.sh
-./run.sh -k <number signal>
+./run.sh -s <number signal> -p <number port>
 ```
-
 
 ## Task
 
