@@ -11,7 +11,7 @@
 
 #define PORT 5006
 
-const char* get_data_for_send()
+const char* get_data_for_send(const char* file_name)
 {
     FILE* fp;
     char c;
@@ -20,10 +20,12 @@ const char* get_data_for_send()
     int new_size = size;
     char *buffer = malloc(size*sizeof(char));
 
-    fp = fopen("../send_data.txt", "r");
+    fp = fopen(file_name, "r");
     
-    if (fp == NULL)
+    if (fp == NULL){
         perror("File wasn't open");
+        return NULL;
+    }
 
     while (fscanf(fp, "%c", &c) != EOF)
     {
@@ -48,11 +50,12 @@ int main(int argc, char *argv[])
 {
     int sockfd = 0, n = 0;
     struct sockaddr_in serv_addr;
+    char* file_n = NULL;
 
-    if (argc != 3 ) 
+    if (argc != 4 ) 
     {
-        printf("\n Usage: %s <ip of server> %s <number port> \n", 
-               argv[1], argv[2]);
+        printf("\n Usage: %s <ip of server> %s <number port> %s <file name>  \n", 
+               argv[1], argv[2], argv[3]);
         return 1;
     }
 
@@ -82,7 +85,7 @@ int main(int argc, char *argv[])
        return 1;
     }
 
-    const char* buff = get_data_for_send();
+    const char* buff = get_data_for_send(argv[3]);
     if (send(sockfd, buff, strlen(buff), 0) != strlen(buff))
         perror("Sent a different number of bytes than expected ");
     else
