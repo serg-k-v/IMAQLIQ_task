@@ -43,7 +43,7 @@ else
 
 	./Server -p $port -f ../client_data.txt &
 	server_pid=$!
-	./Client  0.0.0.0 $port ../client_data.txt
+	./Client  0.0.0.0 $port ../send_data.txt
 	client_pid=$!
 
 	sleep 2s

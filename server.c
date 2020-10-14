@@ -11,7 +11,7 @@
 #define MAX_PENDING 5
 #define BUFF_SIZE 1024
 #define DEFAULT_PORT 5000
-#define DEFAULT_FILE_NAME "cl_data.txt"
+#define DEFAULT_FILE_NAME "../cl_data.txt"
 
 struct cmd_option {
     unsigned  int is_local;
@@ -165,7 +165,7 @@ int main(int argc, char* const argv[])
     if (listen(sockfd, MAX_PENDING) < 0)
         perror("Error listening");
 
-    
+
     catch_signal(SIGTERM);
     catch_signal(SIGHUP);
 
@@ -175,6 +175,7 @@ int main(int argc, char* const argv[])
         if (connfd < 0)
             perror("\nError accept");
 
+        memset(recvBuff, 0, BUFF_SIZE*sizeof(char));
         if ((n = recv(connfd, recvBuff, BUFF_SIZE, 0)) < 0)
             perror("\nRecive failed!");
 
