@@ -59,12 +59,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        printf("\n Error : Could not create socket \n");
-        return 1;
-    }
-
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
@@ -78,6 +72,12 @@ int main(int argc, char *argv[])
     }
 
     printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), atoi(argv[2]));
+
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("\n Error : Could not create socket \n");
+        return 1;
+    }
 
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {

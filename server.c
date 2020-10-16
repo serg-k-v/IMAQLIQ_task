@@ -7,6 +7,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <systemd/sd-daemon.h>
 
 #define MAX_PENDING 5
 #define BUFF_SIZE 1024
@@ -124,29 +125,15 @@ void catch_signal(const int signum)
     sigaction(signum, &_sigact, NULL);
 }
 
-int main(int argc, char* const argv[])
+void setup_options(struct sockaddr_in* serv_addr)
 {
-    char recvBuff[BUFF_SIZE] = {0};
-    int sockfd = 0, connfd = 0, n = 0;
-    struct sockaddr_in serv_addr;
-    unsigned int addr_len = 0;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-        perror("Error opening socket");
-    
-    get_cmd_option(argc, argv);
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
     if (cmd_opt.port == NULL)
     {
         printf("Port not specified, using defaul port %d\n", DEFAULT_PORT);
-        serv_addr.sin_port = htons(DEFAULT_PORT);
+        (*serv_addr).sin_port = htons(DEFAULT_PORT);
     }
     else
-        serv_addr.sin_port = htons(atoi(cmd_opt.port));
+        (*serv_addr).sin_port = htons(atoi(cmd_opt.port));
 
     if (cmd_opt.file == NULL)
     {
@@ -156,16 +143,47 @@ int main(int argc, char* const argv[])
         strncpy(cmd_opt.file, DEFAULT_FILE_NAME, strlen(DEFAULT_FILE_NAME));
     }
 
-    printf("PID is %ld\n", (long)getpid());
-    printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), ntohs(serv_addr.sin_port));
+    (*serv_addr).sin_family = AF_INET;
+    (*serv_addr).sin_addr.s_addr = htonl(INADDR_ANY);
+}
 
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-        perror("Bind failed");
+int main(int argc, char* const argv[])
+{
+    char recvBuff[BUFF_SIZE] = {0};
+    int sockfd = 0, connfd = 0;
+    struct sockaddr_in serv_addr;
+    unsigned int addr_len = 0;
+    int n;
 
-    if (listen(sockfd, MAX_PENDING) < 0)
-        perror("Error listening");
+    get_cmd_option(argc, argv);
+    setup_options(&serv_addr);
+  
+    if ((n = sd_listen_fds(0)) > 1)
+    {
+        printf("n > 1 ??");
+        perror("Too many file descriptors received.\n");
+        exit(1);
+    }
+    else if (n == 1)
+    {
+        printf("n == 1 ??");
+        sockfd = SD_LISTEN_FDS_START + 0;
+    }
+    else
+    {
+        if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+            perror("Error opening socket");
 
+        printf("PID is %ld\n", (long)getpid());
+        printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), ntohs(serv_addr.sin_port));
 
+        if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
+            perror("Bind failed");
+
+        if (listen(sockfd, MAX_PENDING) < 0)
+            perror("Error listening");
+    }
+    
     catch_signal(SIGTERM);
     catch_signal(SIGHUP);
 

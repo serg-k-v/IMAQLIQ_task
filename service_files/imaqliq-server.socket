@@ -1,0 +1,9 @@
+[Unit]
+Description=Imaqliq Socket
+
+[Socket]
+ListenStream=0.0.0.0:5000
+KeepAlive=true
+
+[Install]
+WantedBy=sockets.target

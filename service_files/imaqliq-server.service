@@ -1,0 +1,9 @@
+[Unit]
+Description=Imaqliq server Service
+
+[Service]
+Type=simple
+ExecStart=/tmp/imaqliq_task/imaqliq_serverd -p 5000 -f /tmp/imaqliq_task/client_data.txt
+
+[Install]
+WantedBy=multi-user.target
