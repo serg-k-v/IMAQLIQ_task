@@ -1,4 +1,6 @@
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -19,6 +21,13 @@ struct cmd_option {
     char* addr;
     char* file;
 } cmd_opt;
+
+void free_options()
+{
+    free(cmd_opt.port);
+    free(cmd_opt.addr);
+    free(cmd_opt.file);
+}
 
 int get_cmd_option(int argc, char* const argv[])
 {
@@ -109,7 +118,7 @@ void save_data_to_file(const char* buffer, unsigned int len,
 
 void signal_handler(int signal, siginfo_t *info, void *ptr)
 {
-    printf("Received signal %d\n", signal);
+    printf("Server received signal %d\n", signal);
     exit(0);
 }
 
@@ -124,29 +133,15 @@ void catch_signal(const int signum)
     sigaction(signum, &_sigact, NULL);
 }
 
-int main(int argc, char* const argv[])
+void setup_options(struct sockaddr_in* serv_addr)
 {
-    char recvBuff[BUFF_SIZE] = {0};
-    int sockfd = 0, connfd = 0, n = 0;
-    struct sockaddr_in serv_addr;
-    unsigned int addr_len = 0;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-        perror("Error opening socket");
-    
-    get_cmd_option(argc, argv);
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
     if (cmd_opt.port == NULL)
     {
         printf("Port not specified, using defaul port %d\n", DEFAULT_PORT);
-        serv_addr.sin_port = htons(DEFAULT_PORT);
+        (*serv_addr).sin_port = htons(DEFAULT_PORT);
     }
     else
-        serv_addr.sin_port = htons(atoi(cmd_opt.port));
+        (*serv_addr).sin_port = htons(atoi(cmd_opt.port));
 
     if (cmd_opt.file == NULL)
     {
@@ -156,15 +151,62 @@ int main(int argc, char* const argv[])
         strncpy(cmd_opt.file, DEFAULT_FILE_NAME, strlen(DEFAULT_FILE_NAME));
     }
 
+    (*serv_addr).sin_family = AF_INET;
+    (*serv_addr).sin_addr.s_addr = htonl(INADDR_ANY);
+}
+
+int main(int argc, char* const argv[])
+{
+    pid_t pid, sid;
+
+    pid = fork();
+
+    if (pid < 0)
+        exit(1);
+
+    if (pid > 0)
+        exit(0);
+
+    if (setsid() < 0)
+        exit(1);
+
+    catch_signal(SIGTERM);
+    catch_signal(SIGHUP);
+    
+    pid = fork();
+
+    if (pid < 0)
+        exit(1);
+
+    if (pid > 0)
+        exit(0);
+
+    umask(0);
+
+    /* Set new session */
+    sid = setsid();
+    if (sid < 0)
+        exit(1);
+
+    char recvBuff[BUFF_SIZE] = {0};
+    int sockfd = 0, connfd = 0, n = 0;
+    struct sockaddr_in serv_addr;
+    unsigned int addr_len = 0;
+
+    get_cmd_option(argc, argv);
+    setup_options(&serv_addr);
+
     printf("PID is %ld\n", (long)getpid());
     printf("listen %s:%d\n", inet_ntoa(serv_addr.sin_addr), ntohs(serv_addr.sin_port));
+
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        perror("Error opening socket");
 
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
         perror("Bind failed");
 
     if (listen(sockfd, MAX_PENDING) < 0)
         perror("Error listening");
-
 
     catch_signal(SIGTERM);
     catch_signal(SIGHUP);
@@ -185,5 +227,6 @@ int main(int argc, char* const argv[])
         sleep(1);
     }
 
+    free_options();
     return 0;
 }

@@ -7,7 +7,7 @@ Simple client-server app
 ## Instructions
 ```bash
 chmod +x ./run.sh
-./run.sh
+./run.sh -p <number port>
 ```
 or
 
